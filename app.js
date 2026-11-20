@@ -120,4 +120,51 @@ if (eventForm) {
   console.error('🚫 لا يمكن إضافة مستمع الحدث: النموذج غير موجود!');
 }
 
-loadEventsData();
+loadEventsData();/* ----------  حاسبة الحصص  ---------- */
+function calculateRation() {
+  // 1️⃣ قراءة القيم من الواجهة
+  const stageIdx = +$("#calc-stage").value;          // رقم المرحلة (0‑11)
+  const animals  = +$("#calc-animals").value;       // عدد الحيوانات
+  const weight   = +$("#calc-weight").value;         // وزن كل حيوان (كغ)
+
+  if (!stageIdx || animals <= 0 || weight <= 0) {
+    $("#calc-result").innerHTML = '<p class="m">الرجاء ملء جميع الحقول.</p>';
+    return;
+  }
+
+  // 2️⃣ الحصول على بيانات المرحلة
+  const stage = STAGES[stageIdx];   // [name, MS, unit, PDI, Ca, P]
+  const requiredMS = stage[1];      // كمية material الجافة المطلوبة (كغ) لكل حيوان في اليوم
+
+  // 3️⃣ حساب الكمية الإجمالية للعلف
+  let totalKg = 0;
+  RATIONS[stageIdx].forEach(pair => {
+    const feedName = pair[0];               // مثال: "الشعير (حبوب)"
+    const qtyKg    = pair[1];               // الكمية المطلوبة لكل حيوان (كغ) في مرحلة الجافة
+    const feedInfo = FarmData.FEEDS.find(f => f[0] === feedName);
+    if (!feedInfo) return;                  // لا يوجد هذا العلف في قاعدة البيانات
+
+    // 4️⃣ تحويل الحاجة إلى كمية العلف الفعلية
+    //   الحاجة إلى مادة جافة = requiredMS (كغ)
+    //   العلف يحتوي على % MS = feedInfo[2]
+    const feedMSPercent = feedInfo[2];      // مثلاً 87%
+    const feedKgPerAnimal = requiredMS * 100 / feedMSPercent; // كغ علف needed per animal
+    totalKg += feedKgPerAnimal * animals;   // الكمية الإجمالية
+  });
+
+  // 5️⃣ عرض النتيجة
+  $("#calc-result").innerHTML = `
+    <div class="m"><b>الحصص اليومية:</b> ${totalKg.toFixed(2)} كغ</div>
+    <div class="m"><b>المرحلة:</b> ${stage[0]}</div>
+  `;
+}
+
+/* تشغيل الحاسبة عند تحميل الصفحة */
+document.addEventListener("DOMContentLoaded", () => {
+  // تهيئة الـ dropdown لتظهر المرحلة الأولى تلقائيًا
+  $("#calc-stage").value = "0"; // جافة
+  calculateRation(); // حساب أولي
+});
+
+/* ربط الحدث بالزر */
+$("#calc-btn").onclick = calculateRation;
